@@ -4,30 +4,18 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:materialdesign="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     tools:context="com.example.jeremy.brightnessadjuster.MainActivity">
 
-
-    <TextView
-        android:id="@+id/AutoBrightnessText"
-        android:layout_marginTop="20dp"
-        android:text="AutoBrightness"
+    <com.gc.materialdesign.views.Slider
+        android:id="@+id/brightnessSlider"
+        android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:layout_width="match_parent"/>
-
-    <TextView
-        android:id="@+id/change_screen_brightness_value_text_view"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_vertical"
-        android:layout_marginTop="100dp"
-        android:gravity="center" />
-
-    <SeekBar
-        android:id="@+id/change_screen_brightness_seekbar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp" />
+        android:background="#1E88E5"
+        materialdesign:max="255"
+        materialdesign:min="10"
+        />
 
     <Switch
         android:id="@+id/switch1"

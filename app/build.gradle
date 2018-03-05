@@ -16,9 +16,16 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    repositories {
+        jcenter()
+    }
 }
 
+
+
 dependencies {
+    compile 'com.github.navasmdc:MaterialDesign:1.5@aar'
+    compile 'com.nineoldandroids:library:2.4.0'
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation 'com.android.support:appcompat-v7:26.1.0'
     implementation 'com.android.support.constraint:constraint-layout:1.0.2'

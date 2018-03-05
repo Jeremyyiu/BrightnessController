@@ -2,21 +2,28 @@ package com.example.jeremy.brightnessadjuster;
 
 import android.content.Context;
 import android.content.Intent;
+import android.database.ContentObserver;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.provider.Settings;
 import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
-import android.widget.SeekBar;
 import android.widget.Switch;
-import android.widget.TextView;
+import android.widget.Toast;
+
+import com.gc.materialdesign.views.Slider;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String SCREEN_BRIGHTNESS_STRING = "Current screen brightness value is ";
     private int initialBrightness = 0;
     private boolean isInitialAutoBrightness = false;
+    Slider brightnessSlider = null;
+    BrightnessObserver brightnessObserver = null;
+    AutoBrightnessObserver autobrightnessObserver = null;
 
 
     @Override
@@ -25,40 +32,50 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         setupInitialBrightness();
+        // get and initialize brightness slider
+        brightnessSlider = (Slider) findViewById(R.id.brightnessSlider);
+        initSlider(brightnessSlider);
 
-        final TextView screenBrightnessValueTextView = findViewById(R.id.change_screen_brightness_value_text_view);
+        final Uri BRIGHTNESS_URL = Settings.System.getUriFor(android.provider.Settings.System.SCREEN_BRIGHTNESS);
+        brightnessObserver = new BrightnessObserver(new Handler());
+        getApplicationContext().getContentResolver()
+                .registerContentObserver(BRIGHTNESS_URL, true, brightnessObserver);
 
-        SeekBar seekBar = (SeekBar) findViewById(R.id.change_screen_brightness_seekbar);
-        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+        final Uri AUTOBRIGHTNESS_URL = Settings.System.getUriFor(Settings.System.SCREEN_BRIGHTNESS_MODE);
+        autobrightnessObserver = new AutoBrightnessObserver(new Handler());
+        getApplicationContext().getContentResolver()
+                .registerContentObserver(AUTOBRIGHTNESS_URL, true, autobrightnessObserver);
+    }
+
+    private void initSlider(Slider slider) {
+        final int minBrightness = 10;
+        final int maxBrightness = 255;
+        // set range of slider
+        brightnessSlider.setMax(maxBrightness - minBrightness);
+
+        int screenBrightness = getCurrentBrightness();
+        slider.setValue(screenBrightness);
+        slider.setOnValueChangedListener(new Slider.OnValueChangedListener() {
             @RequiresApi(api = Build.VERSION_CODES.M)
             @Override
-            public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
+            public void onValueChanged(int progress) {
 
                 Context context = getApplicationContext();
 
+                //Checks if this app can modify system settings
                 boolean canWriteSettings = Settings.System.canWrite(context);
 
                 if (canWriteSettings) {
-                    //Needs to convert because the max screen brightness is 255 and max seekbar value is 100
-                    int screenBrightnessValue = i * 255 / 100;
-
-                    screenBrightnessValueTextView.setText(SCREEN_BRIGHTNESS_STRING + screenBrightnessValue);
+                    progress = progress + minBrightness;
 
                     setBrightnessToManual();
-                    setCurrentBrightness(screenBrightnessValue);
+                    setCurrentBrightness(progress);
+
                 } else {
+                    //if currently cant modify system settings, app will ask for permission
+                    Toast.makeText(context, "Please Enable Write Permissions", Toast.LENGTH_SHORT).show();
                     askWritePermissions();
                 }
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-
             }
         });
     }
@@ -73,7 +90,8 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * Toggles Autobrightness
-     * @param view
+     *
+     * @param view - update changes to the  screen
      */
     public void autoBrightnessSwitchClick(View view) {
         Switch autoBrightnessSwitch = findViewById(R.id.switch1);
@@ -82,6 +100,7 @@ public class MainActivity extends AppCompatActivity {
         } else {
             setBrightnessToManual();
         }
+        brightnessSlider.setValue(getCurrentBrightness());
     }
 
     /**
@@ -89,11 +108,7 @@ public class MainActivity extends AppCompatActivity {
      */
     private void setupInitialBrightness() {
         initialBrightness = getCurrentBrightness();
-        if (checkIfAutoBrightness() == 1) {
-            isInitialAutoBrightness = true;
-        } else {
-            isInitialAutoBrightness = false;
-        }
+        isInitialAutoBrightness = checkIfAutoBrightness() == 1;
     }
 
     private int checkIfAutoBrightness() {
@@ -139,6 +154,59 @@ public class MainActivity extends AppCompatActivity {
         } else {
             setBrightnessToManual();
             setCurrentBrightness(initialBrightnessValue);
+            brightnessSlider.setValue(initialBrightnessValue);
+        }
+    }
+
+    private void autoBrightnessToggle() {
+        Switch autoBrightnessSwitch = findViewById(R.id.switch1);
+        if (checkIfAutoBrightness() == 1) {
+            autoBrightnessSwitch.setChecked(true);
+        } else if (checkIfAutoBrightness() == 0) {
+            autoBrightnessSwitch.setChecked(false);
+        }
+    }
+
+
+    /**
+     * BrightnessObserver: Handle the change in brightness in real time and change the Slider value
+     */
+    private class BrightnessObserver extends ContentObserver {
+        public BrightnessObserver(Handler h) {
+            super(h);
+        }
+
+        @Override
+        public boolean deliverSelfNotifications() {
+            return true;
+        }
+
+        @Override
+        public void onChange(boolean selfChange) {
+            super.onChange(selfChange);
+            autoBrightnessToggle();
+            brightnessSlider.setValue(getCurrentBrightness());
+        }
+    }
+
+    /**
+     * AutoBrightnessObserver: Handle the change in brightness in real time and change the Slider Value
+     */
+    private class AutoBrightnessObserver extends ContentObserver {
+        public AutoBrightnessObserver(Handler h) {
+            super(h);
+        }
+
+        @Override
+        public boolean deliverSelfNotifications() {
+            return true;
+        }
+
+        @Override
+        public void onChange(boolean selfChange) {
+            super.onChange(selfChange);
+            autoBrightnessToggle();
+            brightnessSlider.setValue(getCurrentBrightness());
         }
     }
 }
